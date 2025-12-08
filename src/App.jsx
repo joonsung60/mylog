@@ -4,7 +4,6 @@ import reset from "styled-reset";
 import { useState, useEffect } from "react";
 import { auth } from "./firebase";
 
-// 페이지들 import
 import Home from "./routes/home";
 import Profile from "./routes/profile";
 import Login from "./routes/login";
@@ -14,7 +13,7 @@ import ProtectedRoute from "./components/protected-route";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <ProtectedRoute><Home /></ProtectedRoute>, // 로그인해야 Home 접근 가능
+    element: <ProtectedRoute><Home /></ProtectedRoute>,
     children: [
       {
         path: "",
@@ -67,7 +66,6 @@ function App() {
 
   return (
     <Wrapper>
-      {/* GlobalStyles를 맨 위로 올려서 로딩 중에도 배경색 적용 */}
       <GlobalStyles />
       {isLoading ? "Loading..." : <RouterProvider router={router} />}
     </Wrapper>
