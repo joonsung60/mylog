@@ -2,18 +2,23 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import styled, { createGlobalStyle } from "styled-components";
 import reset from "styled-reset";
 import { useState, useEffect } from "react";
-import { auth } from "./firebase";
+import { auth, authStateReady } from "./firebase";
 
 import Home from "./routes/home";
 import Profile from "./routes/profile";
 import Login from "./routes/login";
 import CreateAccount from "./routes/create-account";
 import ProtectedRoute from "./components/protected-route";
+import Layout from "./components/layout";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <ProtectedRoute><Home /></ProtectedRoute>,
+    element: (
+    <ProtectedRoute>
+      <Layout />
+    </ProtectedRoute>
+    ),
     children: [
       {
         path: "",
@@ -57,7 +62,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   const init = async () => {
-      await auth.authStateReady();
+      await authStateReady();
       setIsLoading(false);
   };
   useEffect(() => {

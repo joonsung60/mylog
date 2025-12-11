@@ -6,7 +6,7 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 
 import { Wrapper, Title, SubTitle, Form, Input, Error, Switcher } from "../components/auth-components";
 import styled from "styled-components";
 
-const Button = styled.span`
+const Button = styled.button`
   margin-top: 20px;
   background-color: white;
   color: black;

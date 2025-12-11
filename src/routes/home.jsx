@@ -1,20 +1,20 @@
 import styled from "styled-components";
-import { auth } from "../firebase";
+import PostLogForm from "../components/post-log-form";
+import Timeline from "../components/timeline";
 
 const Wrapper = styled.div`
-    display: grid;
-    gap: 50px;
-    grid-template-columns: 1fr 4fr;
+  padding: 20px 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
 `;
 
 export default function Home() {
-  const logOut = () => {
-    auth.signOut();
-  };
   return (
     <Wrapper>
-        <h1>🏠 월드 피드 (Home)</h1>
-        <button onClick={logOut} style={{color:"black"}}>로그아웃</button>
+      <PostLogForm />
+      <Timeline />
     </Wrapper>
   );
 }
