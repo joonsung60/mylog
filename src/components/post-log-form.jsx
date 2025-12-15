@@ -4,6 +4,7 @@ import { addDoc, collection, updateDoc } from "firebase/firestore";
 import { auth, db, storage } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getKSTDateString } from "../utils/date-utils";
+import { generateEugeneReply, generateEugenePost } from "../utils/eugene-agent";
 
 const Form = styled.form`
   display: flex;
@@ -165,6 +166,41 @@ export default function PostLogForm() {
         });
       }
       
+       // 3. 유진 봇 댓글 생성 로직
+      const randomChance = Math.random();
+        console.log(`유진 행동 주사위: ${randomChance}`);
+
+        if (randomChance < 0.3) {
+            // [Case A] 30% 확률: 내 글에 댓글 달기 (기존 로직)
+            console.log("-> 유진이가 댓글을 답니다.");
+            generateEugeneReply(log, user.uid).then(async (reply) => {
+                if (reply) {
+                    await addDoc(collection(db, "logs", doc.id, "comments"), {
+                        text: reply,
+                        username: "유진",
+                        userId: "bot-eugene", 
+                        createdAt: Date.now(),
+                        isBot: true 
+                    });
+                }
+            });
+
+        } else {
+            // [Case B] 70% 확률: 유진이가 자기 피드에 새 글 쓰기 (NEW)
+            console.log("-> 유진이가 자기 글을 씁니다 (무관심).");
+            generateEugenePost().then(async (postContent) => {
+                if (postContent) {
+                    await addDoc(collection(db, "logs"), {
+                        log: postContent,
+                        createdAt: Date.now(),
+                        referenceDate: getKSTDateString(), // 오늘 날짜
+                        username: "유진",
+                        userId: "bot-eugene", // 봇 계정 ID
+                        photo: null, // 봇은 일단 텍스트만
+                    });
+                }
+            });
+        }
       // 초기화
       setLog("");
       setFile(null);

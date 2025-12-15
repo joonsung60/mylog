@@ -4,7 +4,7 @@ import { auth } from "../firebase";
 
 const Container = styled.div`
   display: grid;
-  grid-template-columns: 275px 1fr 350px; // 왼쪽 | 중앙 | 오른쪽 비율 고정
+  grid-template-columns: 275px 1fr 350px;
   gap: 30px;
   width: 100%;
   max-width: 1200px;
@@ -12,7 +12,7 @@ const Container = styled.div`
   padding: 0 20px;
   
   @media (max-width: 1024px) {
-    grid-template-columns: 80px 1fr; // 화면 작아지면 오른쪽 위젯 숨김
+    grid-template-columns: 80px 1fr;
     & > :last-child { display: none; }
   }
 `;
@@ -116,27 +116,25 @@ export default function Layout() {
       navigate("/login");
     }
   };
+  const user = auth.currentUser;
 
   return (
     <Container>
-      {/* 1. 왼쪽 사이드바 */}
       <LeftSidebar>
         <Logo>mylog</Logo>
         <MenuItem to="/">
             <i className="fa-solid fa-house"></i> 홈
         </MenuItem>
-        <MenuItem to="/profile">
-            <i className="fa-solid fa-user"></i> 프로필
+        <MenuItem to={`/profile/${user?.uid}`}> 
+            <i className="fa-solid fa-user"></i> 내 프로필
         </MenuItem>
         <LogOutBtn onClick={onLogOut}>
              <i className="fa-solid fa-right-from-bracket"></i> 로그아웃
         </LogOutBtn>
       </LeftSidebar>
 
-      {/* 2. 중앙 컨텐츠 (여기에 Home, Profile 등이 들어옴) */}
       <Outlet />
 
-      {/* 3. 오른쪽 사이드바 */}
       <RightSidebar>
         <SearchBar placeholder="기록 검색..." />
         
@@ -152,7 +150,7 @@ export default function Layout() {
                  <div style={{width:'40px', height:'40px', background:'white', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}>👤</div>
                  <div>
                     <div style={{fontWeight:'bold', marginBottom: '4px'}}>유진</div>
-                    <div style={{fontSize:'12px', color:'gray'}}>대기 중...</div>
+                    <div style={{fontSize:'12px', color:'gray'}}>● 오프라인</div>
                 </div>
             </div>
         </WidgetBox>

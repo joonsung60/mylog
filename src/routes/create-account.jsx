@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -38,22 +39,43 @@ export default function CreateAccount() {
     e.preventDefault();
     setError("");
     if (isLoading || name === "" || email === "" || password === "") return;
+    
+    if (password.length < 6) {
+        setError("비밀번호는 최소 6자 이상이어야 합니다.");
+        return;
+    }
 
     try {
       setLoading(true);
+      
       const credentials = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
+      
       await updateProfile(credentials.user, {
         displayName: name,
       });
+      await setDoc(doc(db, "users", credentials.user.uid), {
+          displayName: name,
+          email: email,
+          bio: "",
+          photoURL: null,
+          createdAt: Date.now(),
+          userId: credentials.user.uid,
+      });
+
       navigate("/");
     } catch (e) {
       if (e instanceof FirebaseError) {
-        // 필요하면 e.code별로 한글 메시지 매핑도 가능
-        setError(e.message);
+        if(e.code === "auth/email-already-in-use") {
+            setError("이미 사용 중인 이메일입니다.");
+        } else if (e.code === "auth/weak-password") {
+            setError("비밀번호가 너무 약합니다.");
+        } else {
+            setError(e.message);
+        }
       } else {
         setError("알 수 없는 오류가 발생했습니다.");
       }
@@ -87,7 +109,7 @@ export default function CreateAccount() {
           onChange={onChange}
           name="password"
           value={password}
-          placeholder="비밀번호"
+          placeholder=""
           type="password"
           required
         />
