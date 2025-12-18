@@ -23,7 +23,11 @@ export const generateEugeneReply = async (currentLog, userId) => {
     
     const pastLogs = snapshot.empty 
         ? "과거 기록 없음." 
-        : snapshot.docs.map(doc => `- ${doc.data().log}`).join("\n");
+        : snapshot.docs.map(doc => {
+            const data = doc.data();
+            const speaker = data.isBot ? "[Eugene(나)]" : "[User(친구)]";
+            return `${speaker}: ${data.log}`;
+        }).join("\n");
 
     console.log("🤖 유진이가 참고할 과거 기억:\n", pastLogs);
 

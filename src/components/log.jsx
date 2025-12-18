@@ -204,8 +204,10 @@ const StyledLink = styled(Link)`
   gap: 10px;
 `;
 
-export default function Log({ username, photo, log, userId, id, referenceDate, createdAt }) {
+export default function Log({ username, photo, log, userId, id, referenceDate, createdAt, isBot }) {
   const user = auth.currentUser;
+  const profileLink = isBot ? "/profile/bot-eugene" : `/profile/${userId}`;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editedLog, setEditedLog] = useState(log);
   const [comments, setComments] = useState([]);
@@ -245,7 +247,7 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
           const randomChance = Math.random();
           console.log(`유진 대댓글 확률: ${randomChance}`);
 
-          if (randomChance < 0.6) {
+          if (randomChance < 1) {
               const contextForEugene = `
                 [Original Log]: "${log}"
                 [User's Reply]: "${userComment}"
@@ -313,7 +315,7 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
   return (
     <Wrapper>
       <Header>
-        <StyledLink to={`/profile/${userId}`}>
+        <StyledLink to={profileLink}>
             <Avatar>{username.slice(0, 1).toUpperCase()}</Avatar>
             <UserInfo>
                 <Username>{username}</Username>
@@ -342,7 +344,7 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
             <Payload>{log}</Payload>
             {photo ? <Photo src={photo} /> : null}
             
-            {user?.uid === userId ? (
+            {user?.uid === userId && !isBot ? (
                 <ActionBtnGroup>
                     <ActionBtn $color="#4aa8d8" onClick={onEdit}>수정</ActionBtn>
                     <ActionBtn $color="tomato" onClick={onDelete}>삭제</ActionBtn>
@@ -355,7 +357,10 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
           <CommentList>
               {comments.map((comment) => (
                   <CommentItem key={comment.id}>
-                      <Link to={`/profile/${comment.userId}`} style={{textDecoration:'none', color:'inherit'}}>
+                      <Link 
+                        to={comment.isBot ? "/profile/bot-eugene" : `/profile/${comment.userId}`} 
+                        style={{textDecoration:'none', color:'inherit'}}
+                      >
                         <CommentAvatar>
                             {comment.isBot ? <i className="fa-solid fa-user"></i> : comment.username.slice(0,1)}
                         </CommentAvatar>
@@ -363,7 +368,10 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
                       
                       <CommentContent>
                           <CommentMeta>
-                              <Link to={`/profile/${comment.userId}`} style={{textDecoration:'none', color:'inherit'}}>
+                              <Link 
+                                to={comment.isBot ? "/profile/bot-eugene" : `/profile/${comment.userId}`}
+                                style={{textDecoration:'none', color:'inherit'}}
+                              >
                                   <CommentUsername>
                                       {comment.username}
                                   </CommentUsername>

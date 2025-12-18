@@ -31,22 +31,6 @@ const TextArea = styled.textarea`
   }
 `;
 
-const AttachFileButton = styled.label`
-  padding: 10px 0px;
-  color: #FF6F00;
-  text-align: center;
-  border-radius: 20px;
-  border: 1px solid #FF6F00;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover {
-    background-color: #FF6F00;
-    color: white;
-  }
-`;
-
 const ActionButtons = styled.div`
   display: flex;
   justify-content: space-between;
@@ -143,11 +127,10 @@ export default function PostLogForm() {
   const onSubmit = async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
-    if (!user || isLoading || log === "" || log.length > 10000) return;
+    if (!user || isLoading || log === "" || log.length > 500) return;
 
     try {
       setLoading(true);
-        // 1. Firestore 저장
       const doc = await addDoc(collection(db, "logs"), {
         log,
         createdAt: Date.now(),
@@ -156,7 +139,6 @@ export default function PostLogForm() {
         userId: user.uid,
       });
 
-        // 2. 파일 업로드
       if (file) {
         const locationRef = ref(storage, `logs/${user.uid}/${doc.id}`);
         const result = await uploadBytes(locationRef, file);
@@ -166,12 +148,10 @@ export default function PostLogForm() {
         });
       }
       
-       // 3. 유진 봇 댓글 생성 로직
       const randomChance = Math.random();
         console.log(`유진 행동 주사위: ${randomChance}`);
 
-        if (randomChance < 0.3) {
-            // [Case A] 30% 확률: 내 글에 댓글 달기 (기존 로직)
+        if (randomChance < 0.5) {
             console.log("-> 유진이가 댓글을 답니다.");
             generateEugeneReply(log, user.uid).then(async (reply) => {
                 if (reply) {
@@ -186,22 +166,21 @@ export default function PostLogForm() {
             });
 
         } else {
-            // [Case B] 70% 확률: 유진이가 자기 피드에 새 글 쓰기 (NEW)
             console.log("-> 유진이가 자기 글을 씁니다 (무관심).");
             generateEugenePost().then(async (postContent) => {
                 if (postContent) {
                     await addDoc(collection(db, "logs"), {
                         log: postContent,
                         createdAt: Date.now(),
-                        referenceDate: getKSTDateString(), // 오늘 날짜
+                        referenceDate: getKSTDateString(),
                         username: "유진",
-                        userId: "bot-eugene", // 봇 계정 ID
-                        photo: null, // 봇은 일단 텍스트만
+                        userId: user.uid,
+                        isBot: true,
+                        photo: null,
                     });
                 }
             });
         }
-      // 초기화
       setLog("");
       setFile(null);
       if(fileInputRef.current) fileInputRef.current.value = "";
@@ -218,7 +197,7 @@ export default function PostLogForm() {
     <Form onSubmit={onSubmit}>
       <TextArea
         rows={5}
-        maxLength={180}
+        maxLength={500}
         onChange={onChange}
         value={log}
         placeholder="오늘 무엇을 했는지 생각해보세요..."
@@ -250,7 +229,6 @@ export default function PostLogForm() {
                 max={getKSTDateString()}
             />
             
-            {/* 날짜 표시 로직 */}
               {referenceDate !== getKSTDateString() && (
                 <SelectedInfo>{referenceDate}</SelectedInfo>
               )}

@@ -109,7 +109,7 @@ export default function CreateAccount() {
           onChange={onChange}
           name="password"
           value={password}
-          placeholder=""
+          placeholder="비밀번호"
           type="password"
           required
         />

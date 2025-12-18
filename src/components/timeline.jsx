@@ -1,7 +1,7 @@
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import Log from "./log";
 
 const Wrapper = styled.div`
@@ -12,20 +12,23 @@ const Wrapper = styled.div`
 
 export default function Timeline() {
   const [logs, setLogs] = useState([]);
+  const user = auth.currentUser;
 
   useEffect(() => {
+    if (!user) return;
     let unsubscribe = null;
     
     const fetchLogs = async () => {
       const logsQuery = query(
         collection(db, "logs"), 
+        where("userId", "==", user.uid),
         orderBy("createdAt", "desc"),
         limit(25)
       );
       
       unsubscribe = onSnapshot(logsQuery, (snapshot) => {
         const logsData = snapshot.docs.map((doc) => {
-          const { log, createdAt, userId, username, photo, referenceDate } = doc.data();
+          const { log, createdAt, userId, username, photo, referenceDate, isBot } = doc.data();
           return {
             log,
             createdAt,
@@ -33,6 +36,7 @@ export default function Timeline() {
             username,
             photo,
             referenceDate,
+            isBot,
             id: doc.id,
           };
         });
@@ -45,7 +49,7 @@ export default function Timeline() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   return (
     <Wrapper>

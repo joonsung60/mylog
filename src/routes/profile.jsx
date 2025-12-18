@@ -1,8 +1,8 @@
 import { collection, getDocs, orderBy, query, where, doc, getDoc, setDoc } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
+import { updateProfile, signOut } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { auth, db, storage } from "../firebase";
 import Log from "../components/log";
@@ -122,6 +122,13 @@ const BioInput = styled.textarea`
   &:focus { border-color: #FF6F00; outline: none; }
 `;
 
+const ButtonsColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+`;
+
 const EditBtn = styled.button`
   background-color: transparent;
   color: gray;
@@ -135,6 +142,17 @@ const EditBtn = styled.button`
   &:hover { 
     border-color: white;
     color: white;
+  }
+`;
+
+const LogoutBtn = styled(EditBtn)`
+  color: tomato;
+  border-color: tomato;
+  
+  &:hover {
+    background-color: tomato;
+    color: white;
+    border-color: tomato;
   }
 `;
 
@@ -203,8 +221,13 @@ export default function Profile() {
 
   const isMyProfile = userId === auth.currentUser?.uid;
   const botProfile = BOT_PROFILES[userId];
+  const isBot = !!botProfile;
+  const user = auth.currentUser;
+
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user) return;
     const fetchProfile = async () => {
       if (botProfile) {
         setName(botProfile.name);
@@ -245,19 +268,30 @@ export default function Profile() {
       }
 
       const logsRef = collection(db, "logs");
+      const targetUid = isBot ? user.uid : userId;
+
       const q = query(
         logsRef,
-        where("userId", "==", userId),
+        where("userId", "==", targetUid),
         orderBy("createdAt", "desc")
       );
       
       const snapshot = await getDocs(q);
-      const fetchedLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setLogs(fetchedLogs);
+      
+      const filteredLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+        .filter(log => {
+            if (isBot) {
+                return log.isBot === true;
+            } else {
+                return !log.isBot;
+            }
+        });
+
+      setLogs(filteredLogs);
     };
 
     fetchProfile();
-  }, [userId]);
+  }, [userId, isBot, user]);
 
   const onSave = async () => {
     if(!isMyProfile) return;
@@ -309,6 +343,14 @@ export default function Profile() {
     }
   };
 
+  const onLogOut = async () => {
+    const ok = confirm("정말 로그아웃 하시겠습니까?");
+    if (ok) {
+      await signOut(auth);
+      navigate("/login");
+    }
+  };
+
   const getSortedLogs = () => {
     const sorted = [...logs];
     
@@ -332,12 +374,12 @@ export default function Profile() {
   return (
     <Wrapper>
       <ProfileHeader>
-        <AvatarLabel htmlFor="avatar" $isBot={!!botProfile} $isEditing={isEditing}>
-           {isEditing && isMyProfile ? (
-             <img src={editAvatarPreview || "https://via.placeholder.com/80"} />
-           ) : (
-             avatar ? <img src={avatar} /> : (botProfile ? <i className="fa-solid fa-robot"></i> : <i className="fa-solid fa-user"></i>)
-           )}
+        <AvatarLabel htmlFor="avatar" $isBot={isBot} $isEditing={isEditing}>
+            {isEditing && isMyProfile ? (
+                <img src={editAvatarPreview || "https://via.placeholder.com/80"} />
+            ) : (
+                avatar ? <img src={avatar} /> : <i className="fa-solid fa-user"></i>
+            )}
         </AvatarLabel>
         
         {isEditing && (
@@ -353,14 +395,19 @@ export default function Profile() {
                 )}
 
                 {isMyProfile && !botProfile && (
-                    isEditing ? (
-                        <div style={{display:'flex', gap:'5px'}}>
-                            <EditBtn onClick={() => setIsEditing(false)}>취소</EditBtn>
-                            <SaveBtn onClick={onSave}>저장</SaveBtn>
-                        </div>
-                    ) : (
-                        <EditBtn onClick={() => setIsEditing(true)}>프로필 수정</EditBtn>
-                    )
+                    <ButtonsColumn>
+                        {isEditing ? (
+                            <div style={{display:'flex', gap:'5px'}}>
+                                <EditBtn onClick={() => setIsEditing(false)}>취소</EditBtn>
+                                <SaveBtn onClick={onSave}>저장</SaveBtn>
+                            </div>
+                        ) : (
+                            <>
+                                <EditBtn onClick={() => setIsEditing(true)}>프로필 수정</EditBtn>
+                                <LogoutBtn onClick={onLogOut}>로그아웃</LogoutBtn>
+                            </>
+                        )}
+                    </ButtonsColumn>
                 )}
             </NameRow>
 
