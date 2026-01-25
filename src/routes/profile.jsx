@@ -268,26 +268,21 @@ export default function Profile() {
       }
 
       const logsRef = collection(db, "logs");
-      const targetUid = isBot ? user.uid : userId;
-
+      // 수정된 부분: 단순하게 userId로만 필터
       const q = query(
         logsRef,
-        where("userId", "==", targetUid),
+        where("userId", "==", userId),  // 봇이든 유저든 그냥 userId
         orderBy("createdAt", "desc")
       );
-      
+            
       const snapshot = await getDocs(q);
       
-      const filteredLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
-        .filter(log => {
-            if (isBot) {
-                return log.isBot === true;
-            } else {
-                return !log.isBot;
-            }
-        });
+      const fetchedLogs = snapshot.docs.map(doc => ({ 
+        ...doc.data(), 
+        id: doc.id 
+      }));
 
-      setLogs(filteredLogs);
+      setLogs(fetchedLogs);
     };
 
     fetchProfile();

@@ -249,8 +249,8 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
         const userComment = commentText;
         setCommentText("");
 
-        // 2. 봇 대댓글 실행
-        await handleUserComment(userComment, id, user.uid);
+        // 2. 봇 대댓글 실행 (원글 작성자 정보 전달)
+        await handleUserComment(userComment, id, user.uid, userId);  // ← userId 추가!
 
     } catch (e) {
         console.error(e);

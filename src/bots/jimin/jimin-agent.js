@@ -31,7 +31,17 @@ export const generateJiminReply = async (currentLog, userId) => {
         ? "과거 기록 없음."
         : snapshot.docs.map(doc => {
             const data = doc.data();
-            const speaker = data.isBot ? "[Jimin(나)]" : "[User(친구)]";
+            
+            // 수정된 부분: 봇 구분
+            let speaker;
+            if (data.userId === "bot-jimin") {
+              speaker = "[Jimin(나)]";
+            } else if (data.isBot) {
+              speaker = `[${data.username}]`;  // [유진], [다른봇] 등
+            } else {
+              speaker = "[User(친구)]";
+            }
+            
             return `${speaker}: ${data.log}`;
         }).join("\n");
 
