@@ -1,4 +1,4 @@
-import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { db, auth } from "../firebase";
@@ -21,7 +21,6 @@ export default function Timeline() {
     const fetchLogs = async () => {
       const logsQuery = query(
         collection(db, "logs"), 
-        where("userId", "==", user.uid),
         orderBy("createdAt", "desc"),
         limit(25)
       );

@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import { buildSystemPrompt, buildPostingPrompt } from "./eugene-prompts";
 
 const openai = new OpenAI({

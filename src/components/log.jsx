@@ -4,8 +4,10 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateD
 import { deleteObject, ref } from "firebase/storage";
 import { useEffect, useState } from "react";
 import { getKSTDateString, getKSTTimeString } from "../utils/date-utils";
-import { generateEugeneReply } from "../utils/eugene-agent";
 import { Link } from "react-router-dom";
+import { handleUserComment } from "../bots/bot-manager";
+
+// ✂️ generateEugeneReply import 삭제됨
 
 const Wrapper = styled.div`
   display: flex;
@@ -142,7 +144,7 @@ const CommentInput = styled.input`
 `;
 
 const CommentBtn = styled.button`
-background-color: transparent;
+  background-color: transparent;
   color: gray;
   border: 1px solid gray;
   padding: 5px 15px;
@@ -206,7 +208,9 @@ const StyledLink = styled(Link)`
 
 export default function Log({ username, photo, log, userId, id, referenceDate, createdAt, isBot }) {
   const user = auth.currentUser;
-  const profileLink = isBot ? "/profile/bot-eugene" : `/profile/${userId}`;
+  
+  // ✅ 수정: 봇이든 유저든 userId 그대로 사용
+  const profileLink = `/profile/${userId}`;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedLog, setEditedLog] = useState(log);
@@ -228,49 +232,31 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
     return () => unsubscribe();
   }, [id]);
 
-    const onSubmitComment = async (e) => {
-      e.preventDefault();
-      if(commentText === "") return;
-      
-      try {
-          await addDoc(collection(db, "logs", id, "comments"), {
-            text: commentText,
-            username: user.displayName || "익명",
-            userId: user.uid,
-            createdAt: Date.now(),
-            isBot: false
-          });
-          
-          const userComment = commentText;
-          setCommentText("");
+  const onSubmitComment = async (e) => {
+    e.preventDefault();
+    if(commentText === "") return;
+    
+    try {
+        // 1. 사용자 댓글 저장
+        await addDoc(collection(db, "logs", id, "comments"), {
+          text: commentText,
+          username: user.displayName || "익명",
+          userId: user.uid,
+          createdAt: Date.now(),
+          isBot: false
+        });
+        
+        const userComment = commentText;
+        setCommentText("");
 
-          const randomChance = Math.random();
-          console.log(`유진 대댓글 확률: ${randomChance}`);
+        // 2. 봇 대댓글 실행
+        await handleUserComment(userComment, id, user.uid);
 
-          if (randomChance < 1) {
-              const contextForEugene = `
-                [Original Log]: "${log}"
-                [User's Reply]: "${userComment}"
-              `;
-
-              generateEugeneReply(contextForEugene, user.uid).then(async (reply) => {
-                  if (reply) {
-                      await addDoc(collection(db, "logs", id, "comments"), {
-                          text: reply,
-                          username: "유진",
-                          userId: "bot-eugene",
-                          createdAt: Date.now(),
-                          isBot: true
-                      });
-                  }
-              });
-          }
-
-      } catch (e) {
-          console.error(e);
-          alert("댓글 작성 실패");
-      }
-    };
+    } catch (e) {
+        console.error(e);
+        alert("댓글 작성 실패");
+    }
+  };
 
   const onDelete = async () => {
     const ok = confirm("이 기록을 정말 삭제하시겠습니까?");
@@ -305,9 +291,7 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
   }
 
   const createdString = getKSTDateString(createdAt);
-
   const targetDate = referenceDate || createdString;
-
   const dateDisplay = (targetDate === createdString) 
     ? `${createdString}의 기록` 
     : `${createdString}의 기록 (${targetDate})`;
@@ -353,48 +337,49 @@ export default function Log({ username, photo, log, userId, id, referenceDate, c
         </>
       )}
 
-        <CommentSection>
-          <CommentList>
-              {comments.map((comment) => (
-                  <CommentItem key={comment.id}>
-                      <Link 
-                        to={comment.isBot ? "/profile/bot-eugene" : `/profile/${comment.userId}`} 
-                        style={{textDecoration:'none', color:'inherit'}}
-                      >
-                        <CommentAvatar>
-                            {comment.isBot ? <i className="fa-solid fa-user"></i> : comment.username.slice(0,1)}
-                        </CommentAvatar>
-                      </Link>
-                      
-                      <CommentContent>
-                          <CommentMeta>
-                              <Link 
-                                to={comment.isBot ? "/profile/bot-eugene" : `/profile/${comment.userId}`}
-                                style={{textDecoration:'none', color:'inherit'}}
-                              >
-                                  <CommentUsername>
-                                      {comment.username}
-                                  </CommentUsername>
-                              </Link>
-                              <CommentTime>{getKSTTimeString(comment.createdAt)}</CommentTime>
-                          </CommentMeta>
-                          
-                          <div style={{fontSize: '14px', lineHeight:'1.4'}}>
-                              {comment.text}
-                          </div>
-                      </CommentContent>
-                  </CommentItem>
-              ))}
-          </CommentList>
-          
-          <CommentForm onSubmit={onSubmitComment}>
-              <CommentInput 
-                  placeholder="..." 
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-              />
-              <CommentBtn type="submit">등록</CommentBtn>
-          </CommentForm>
+      <CommentSection>
+        <CommentList>
+            {comments.map((comment) => (
+                <CommentItem key={comment.id}>
+                    {/* ✅ 수정: 댓글도 userId 그대로 사용 */}
+                    <Link 
+                      to={`/profile/${comment.userId}`}
+                      style={{textDecoration:'none', color:'inherit'}}
+                    >
+                      <CommentAvatar>
+                          {comment.isBot ? <i className="fa-solid fa-user"></i> : comment.username.slice(0,1)}
+                      </CommentAvatar>
+                    </Link>
+                    
+                    <CommentContent>
+                        <CommentMeta>
+                            <Link 
+                              to={`/profile/${comment.userId}`}
+                              style={{textDecoration:'none', color:'inherit'}}
+                            >
+                                <CommentUsername>
+                                    {comment.username}
+                                </CommentUsername>
+                            </Link>
+                            <CommentTime>{getKSTTimeString(comment.createdAt)}</CommentTime>
+                        </CommentMeta>
+                        
+                        <div style={{fontSize: '14px', lineHeight:'1.4'}}>
+                            {comment.text}
+                        </div>
+                    </CommentContent>
+                </CommentItem>
+            ))}
+        </CommentList>
+        
+        <CommentForm onSubmit={onSubmitComment}>
+            <CommentInput 
+                placeholder="..." 
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+            />
+            <CommentBtn type="submit">등록</CommentBtn>
+        </CommentForm>
       </CommentSection>
     </Wrapper>
   );

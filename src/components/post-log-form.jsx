@@ -4,7 +4,7 @@ import { addDoc, collection, updateDoc } from "firebase/firestore";
 import { auth, db, storage } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getKSTDateString } from "../utils/date-utils";
-import { generateEugeneReply, generateEugenePost } from "../utils/eugene-agent";
+import { handleUserPost } from "../bots/bot-manager"; // ← 새로운 import
 
 const Form = styled.form`
   display: flex;
@@ -131,14 +131,18 @@ export default function PostLogForm() {
 
     try {
       setLoading(true);
+      
+      // 1. 사용자 글 저장
       const doc = await addDoc(collection(db, "logs"), {
         log,
         createdAt: Date.now(),
         referenceDate: referenceDate,
         username: user.displayName || "Anonymous",
         userId: user.uid,
+        isBot: false, // ← 명시적으로 false
       });
 
+      // 2. 사진 업로드 (있으면)
       if (file) {
         const locationRef = ref(storage, `logs/${user.uid}/${doc.id}`);
         const result = await uploadBytes(locationRef, file);
@@ -148,39 +152,10 @@ export default function PostLogForm() {
         });
       }
       
-      const randomChance = Math.random();
-        console.log(`유진 행동 주사위: ${randomChance}`);
-
-        if (randomChance < 0.5) {
-            console.log("-> 유진이가 댓글을 답니다.");
-            generateEugeneReply(log, user.uid).then(async (reply) => {
-                if (reply) {
-                    await addDoc(collection(db, "logs", doc.id, "comments"), {
-                        text: reply,
-                        username: "유진",
-                        userId: "bot-eugene", 
-                        createdAt: Date.now(),
-                        isBot: true 
-                    });
-                }
-            });
-
-        } else {
-            console.log("-> 유진이가 자기 글을 씁니다 (무관심).");
-            generateEugenePost().then(async (postContent) => {
-                if (postContent) {
-                    await addDoc(collection(db, "logs"), {
-                        log: postContent,
-                        createdAt: Date.now(),
-                        referenceDate: getKSTDateString(),
-                        username: "유진",
-                        userId: user.uid,
-                        isBot: true,
-                        photo: null,
-                    });
-                }
-            });
-        }
+      // 3. 봇 행동 실행 (리팩토링된 함수 사용!)
+      await handleUserPost(log, doc.id, user.uid, referenceDate);
+      
+      // 4. 폼 초기화
       setLog("");
       setFile(null);
       if(fileInputRef.current) fileInputRef.current.value = "";
@@ -188,6 +163,7 @@ export default function PostLogForm() {
 
     } catch (e) {
       console.error(e);
+      alert("글 작성 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -203,7 +179,7 @@ export default function PostLogForm() {
         placeholder="오늘 무엇을 했는지 생각해보세요..."
         required
       />
-<ActionButtons>
+      <ActionButtons>
         <Icons>
             <IconButton htmlFor="file">
                 <i className="fa-regular fa-image"></i>
