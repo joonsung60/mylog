@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, where, doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { buildSystemPrompt, buildPostingPrompt } from "./jimin-prompts";
 import { detectDistress, logDistressDetection } from "../../utils/distress-detector";
@@ -9,7 +9,34 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-export const generateJiminReply = async (currentLog, userId) => {
+/**
+ * 댓글 맥락 가져오기 (원글 + 이 글의 모든 댓글)
+ */
+async function getCommentContext(logId) {
+  try {
+    // 1. 원글 가져오기
+    const logDocRef = doc(db, "logs", logId);
+    const logDocSnap = await getDoc(logDocRef);
+    const originalLog = logDocSnap.exists() ? logDocSnap.data()?.log || "" : "";
+
+    // 2. 이 글의 모든 댓글 시간순으로 가져오기
+    const commentsRef = collection(db, "logs", logId, "comments");
+    const q = query(commentsRef, orderBy("createdAt", "asc"));
+    const snapshot = await getDocs(q);
+
+    const comments = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return `${data.username}: "${data.text}"`;
+    }).join("\n");
+
+    return `[원글]\n${originalLog}\n\n[댓글 대화]\n${comments || "(댓글 없음)"}`;
+  } catch (error) {
+    console.error("댓글 맥락 가져오기 실패:", error);
+    return "";
+  }
+}
+
+export const generateJiminReply = async (currentLog, userId, logId = null) => {
   try {
     // 1. 고통 감지
     const distressResult = detectDistress(currentLog);
@@ -50,9 +77,17 @@ export const generateJiminReply = async (currentLog, userId) => {
     // 3. 시스템 프롬프트 생성
     const systemPrompt = buildSystemPrompt(pastLogs);
 
-    // 4. 유저 프롬프트에 고통 정보 추가
+    // 4. 댓글 맥락 가져오기
     let userPrompt = `사용자의 이번 기록: "${currentLog}"`;
 
+    if (logId) {
+      const commentContext = await getCommentContext(logId);
+      if (commentContext) {
+        userPrompt = `${commentContext}\n\n위 대화 맥락을 참고하여 답변해줘. 사용자의 최근 발언: "${currentLog}"`;
+      }
+    }
+
+    // 5. 고통 정보 추가
     if (distressResult.isDistressed) {
       userPrompt += `\n\n[주의] 사용자가 고통스러워하고 있습니다. (강도: ${distressResult.intensity}, 점수: ${distressResult.score})
 감지된 키워드: ${distressResult.keywords.join(", ")}
@@ -61,7 +96,7 @@ export const generateJiminReply = async (currentLog, userId) => {
       userPrompt += `\n\n[모드] 평소 모드 - 침착하게 경청하고, 부드러운 현존을 제공하세요.`;
     }
 
-    // 5. OpenAI API 호출
+    // 6. OpenAI API 호출
     const completion = await openai.chat.completions.create({
       messages: [
         { role: "system", content: systemPrompt },
